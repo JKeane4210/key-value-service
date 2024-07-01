@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
         FD_ZERO(&sockSet);
         // Add keyboard to descriptor vector
         FD_SET(STDIN_FILENO, &sockSet);
-        for (int port = 0; port < noPorts; port++)
+        for (int port = 0; port < noPorts; port++) // sets all the ports to be tried by select()
             FD_SET(servSock[port], &sockSet);
 
         // Timeout specification; must be reset every time select() is called
@@ -51,10 +51,12 @@ int main(int argc, char *argv[])
         selTimeout.tv_usec = 0;      // 0 microseconds
 
         // Suspend program until descriptor is ready or timeout
+        printf("select\n");
         if (select(maxDescriptor + 1, &sockSet, NULL, NULL, &selTimeout) == 0)
             printf("No echo requests for %ld secs...Server still alive\n", timeout);
         else
         {
+            // printf("socketSet: %ld\n", sockSet);
             if (FD_ISSET(0, &sockSet))
             { // Check keyboard
                 puts("Shutting down server");
@@ -63,16 +65,17 @@ int main(int argc, char *argv[])
             }
 
             // Process connection requests
-            for (int port = 0; port < noPorts; port++)
+            for (int port = 0; port < noPorts; port++) {
                 if (FD_ISSET(servSock[port], &sockSet))
                 {
-                    printf("socketSet: %ld\n", sockSet);
                     printf("Request on port %d: ", port);
                     int socketInUse = AcceptTCPConnection(servSock[port]);
+                    
                     HandleTCPClient(socketInUse);
-                    FD_SET(servSock[port], &sockSet);
+                    // FD_SET(servSock[port], &sockSet);
                     printf("Socket being used %d\n", socketInUse);
                 }
+            }
         }
     }
 

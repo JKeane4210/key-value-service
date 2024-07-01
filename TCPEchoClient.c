@@ -6,9 +6,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 // #include "HandleTCPClient.c"
 
-const int BUFSIZE = 256;
+const int BUFSIZE = 32;
 
 void DieWithUserMessage(const char *msg, const char *detail)
 {
@@ -40,6 +41,12 @@ int main(int argc, char *argv[])
 
     // Create a reliable, stream socket using TCP
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        //     int status = fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
+        // if (status == -1){
+        //     perror("calling fcntl");
+        //     // handle the error.  By the way, I've never seen fcntl fail in this way
+        // }
+    
     printf("Created socket: %d\n", sock);
     if (sock < 0)
         DieWithSystemMessage("socket() failed");
@@ -64,6 +71,7 @@ int main(int argc, char *argv[])
 
     // Send the string to the server
     ssize_t numBytes = send(sock, echoString, echoStringLen, 0);
+    printf("completed send\n");
     if (numBytes < 0)
         DieWithSystemMessage("send() failed");
     else if (numBytes != echoStringLen)
@@ -78,6 +86,7 @@ int main(int argc, char *argv[])
         /* Receive up to the buffer size (minus 1 to leave space for
         a null terminator) bytes from the sender */
         numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
+        // printf("Received %d bytes", numBytes);
         if (numBytes < 0)
             DieWithSystemMessage("recv() failed");
         else if (numBytes == 0)

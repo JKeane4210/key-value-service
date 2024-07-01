@@ -8,6 +8,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <fcntl.h>
+#include <errno.h>
 
 const int BUFSIZE = 256;
 
@@ -26,38 +28,73 @@ void DieWithSystemMessage(const char *msg)
     exit(1);
 }
 
-void HandleTCPClient(int clntSocket)
-{
-    char buffer[BUFSIZE]; // Buffer for echo string
+// void HandleTCPClient(int clntSocket)
+// {
+//     char buffer[BUFSIZE]; // Buffer for echo string
 
-    // Receive message from client
+//     // Receive message from client
+//     ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, MSG_PEEK); // checks to see how much we can get
+//     printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
+//     if (numBytesRcvd < 0)
+//         DieWithSystemMessage("recv() failed");
+
+//     // Send received string and receive again until end of stream
+//     // if (numBytesRcvd > 0)
+//     // { // 0 indicates end of stream
+//         // Echo message back to client
+        
+        
+
+//         // // See if there is more data to receive -> could block though
+//         // numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
+//         // printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
+//         // if (numBytesRcvd < 0)
+//         //     DieWithSystemMessage("recv() failed");
+//     // }
+
+//     if (numBytesRcvd == 0) {
+//         ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
+//         printf("Sent %ld bits\n", numBytesSent);
+//         if (numBytesSent < 0)
+//             DieWithSystemMessage("send() failed");
+//         else if (numBytesSent != numBytesRcvd)
+//             DieWithUserMessage("send()", "sent unexpected number of bytes");
+//         close(clntSocket); // Close client socket
+//     } else if (numBytesRcvd == BUFSIZE) {
+//         ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0); // only reads if buffer is full
+//         printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
+//         if (numBytesRcvd < 0)
+//             DieWithSystemMessage("recv() failed");
+//     }
+// }
+
+void HandleTCPClient(int clntSocket) {
+    char buffer[BUFSIZE];
+
     ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-    printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
-    if (numBytesRcvd < 0)
-        DieWithSystemMessage("recv() failed");
+    if (numBytesRcvd < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
+        else DieWithSystemMessage("recv() failed");
+    }
 
-    // Send received string and receive again until end of stream
-    // if (numBytesRcvd > 0)
-    // { // 0 indicates end of stream
-        // Echo message back to client
-        
-        
-
-        // // See if there is more data to receive -> could block though
-        // numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-        // printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
-        // if (numBytesRcvd < 0)
-        //     DieWithSystemMessage("recv() failed");
-    // }
-
-    if (numBytesRcvd == 0) {
+    while (numBytesRcvd > 0) {
         ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
         if (numBytesSent < 0)
             DieWithSystemMessage("send() failed");
         else if (numBytesSent != numBytesRcvd)
             DieWithUserMessage("send()", "sent unexpected number of bytes");
-        close(clntSocket); // Close client socket
+        if (numBytesRcvd < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
+            else DieWithSystemMessage("recv() failed");
+        }
+        numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
+        if (numBytesRcvd < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
+            else DieWithSystemMessage("recv() failed");
+        }
     }
+
+    close(clntSocket);
 }
 
 void PrintSocketAddress(const struct sockaddr *address, FILE *stream)
@@ -110,6 +147,13 @@ int AcceptTCPConnection(int servSock)
         DieWithSystemMessage("accept() failed");
 
     // clntSock is connected to a client!
+    // where socketfd is the socket you want to make non-blocking
+    int status = fcntl(clntSock, F_SETFL, fcntl(clntSock, F_GETFL, 0) | O_NONBLOCK);
+
+    if (status == -1){
+        perror("calling fcntl");
+        // handle the error.  By the way, I've never seen fcntl fail in this way
+    }
 
     fputs("Handling client ", stdout);
     PrintSocketAddress((struct sockaddr *)&clntAddr, stdout);
@@ -141,6 +185,7 @@ int SetupTCPServerSocket(const char *service)
         // Create a TCP socket
         servSock = socket(servAddr->ai_family, servAddr->ai_socktype,
                           servAddr->ai_protocol);
+
         if (servSock < 0)
             continue; // Socket creation failed; try next address
 
