@@ -26,6 +26,39 @@ void DieWithSystemMessage(const char *msg)
     exit(1);
 }
 
+void echo_transaction(int sock, char * echoString, int echoStringLen) {
+    // Send the string to the server
+    ssize_t numBytes = send(sock, echoString, echoStringLen, 0);
+    // printf("completed send\n");
+    if (numBytes < 0)
+        DieWithSystemMessage("send() failed");
+    else if (numBytes != echoStringLen)
+        DieWithUserMessage("send()", "sent unexpected number of bytes");
+
+    // Receive the same string back from the server
+    unsigned int totalBytesRcvd = 0; // Count of total bytes received
+    fputs("Received: ", stdout);     // Setup to print the echoed string
+    while (totalBytesRcvd < echoStringLen)
+    {
+        char buffer[BUFSIZE]; // I/O buffer
+        /* Receive up to the buffer size (minus 1 to leave space for
+        a null terminator) bytes from the sender */
+        numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
+        // printf("Received %d bytes\n", numBytes);
+        // printf("Received %d bytes", numBytes);
+        if (numBytes < 0)
+            DieWithSystemMessage("recv() failed");
+        else if (numBytes == 0)
+            DieWithUserMessage("recv()", "connection closed prematurely");
+        totalBytesRcvd += numBytes; // Keep tally of total bytes
+        buffer[numBytes] = '\0';    // Terminate the string!
+        fputs(buffer, stdout);      // Print the echo buffer
+        // fputc('\n', stdout); // Print a final linefeed
+    }
+
+    fputc('\n', stdout); // Print a final linefeed
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -41,11 +74,6 @@ int main(int argc, char *argv[])
 
     // Create a reliable, stream socket using TCP
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        //     int status = fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
-        // if (status == -1){
-        //     perror("calling fcntl");
-        //     // handle the error.  By the way, I've never seen fcntl fail in this way
-        // }
     
     printf("Created socket: %d\n", sock);
     if (sock < 0)
@@ -69,36 +97,9 @@ int main(int argc, char *argv[])
 
     size_t echoStringLen = strlen(echoString); // Determine input length
 
-    // Send the string to the server
-    ssize_t numBytes = send(sock, echoString, echoStringLen, 0);
-    printf("completed send\n");
-    if (numBytes < 0)
-        DieWithSystemMessage("send() failed");
-    else if (numBytes != echoStringLen)
-        DieWithUserMessage("send()", "sent unexpected number of bytes");
-
-    // Receive the same string back from the server
-    unsigned int totalBytesRcvd = 0; // Count of total bytes received
-    // fputs("Received: ", stdout);     // Setup to print the echoed string
-    while (totalBytesRcvd < echoStringLen)
-    {
-        char buffer[BUFSIZE]; // I/O buffer
-        /* Receive up to the buffer size (minus 1 to leave space for
-        a null terminator) bytes from the sender */
-        numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
-        printf("Received %d bytes\n", numBytes);
-        // printf("Received %d bytes", numBytes);
-        if (numBytes < 0)
-            DieWithSystemMessage("recv() failed");
-        else if (numBytes == 0)
-            DieWithUserMessage("recv()", "connection closed prematurely");
-        totalBytesRcvd += numBytes; // Keep tally of total bytes
-        buffer[numBytes] = '\0';    // Terminate the string!
-        fputs(buffer, stdout);      // Print the echo buffer
-        fputc('\n', stdout); // Print a final linefeed
+    for (int i = 0; i < 10; ++i) {
+        echo_transaction(sock, echoString, echoStringLen);
     }
-
-    fputc('\n', stdout); // Print a final linefeed
 
     close(sock);
     exit(0);

@@ -4,10 +4,15 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include <set>
+#include <map>
 #include "HandleTCPClient.c"
 
 using namespace std;
+
+struct ProtocolBuffer {
+    int length;
+    char buffer[256];
+};
 
 int main(int argc, char *argv[]) {
     const static long TIMEOUT = 2;
@@ -20,21 +25,19 @@ int main(int argc, char *argv[]) {
         maxDescriptor = connectionSocket;
     }
 
-    set<int> activeConnections;
+    map<int, char*> activeConnections;
 
     bool running = true;
     fd_set sockSet;
     while (running) {
-        /* Zero socket descriptor vector and set for server sockets
-        This must be reset every time select() is called */
+        // Zero sockSet and add keyboard and connectionSocket to descriptor vector
         FD_ZERO(&sockSet);
-        // Add keyboard and connectionSocket to descriptor vector
         FD_SET(STDIN_FILENO, &sockSet);
         FD_SET(connectionSocket, &sockSet);
 
         // add everything active connection
-        for (int activeConnectionSocket : activeConnections) {
-            FD_SET(activeConnectionSocket, &sockSet);
+        for (pair<int, char*> activeConnectionSocket : activeConnections) {
+            FD_SET(activeConnectionSocket.first, &sockSet);
         }
 
         // Timeout specification; must be reset every time select() is called
@@ -58,18 +61,19 @@ int main(int argc, char *argv[]) {
             if (FD_ISSET(connectionSocket, &sockSet)) {
                 printf("Request on port %d: ", PORT);
                 int acceptedConnectionSocket = AcceptTCPConnection(connectionSocket);
-                activeConnections.insert(acceptedConnectionSocket);
+                char* protocolBuffer = new char[256];
+                activeConnections.insert({acceptedConnectionSocket, protocolBuffer});
                 if (acceptedConnectionSocket > maxDescriptor) {
                     maxDescriptor = acceptedConnectionSocket;
                 }
             }
 
             // loop through active connection sockets
-            set<int>::iterator it = activeConnections.begin();
+            map<int, char*>::iterator it = activeConnections.begin();
             while (it != activeConnections.end()) {
                 int numBytesRecvd;
-                if (FD_ISSET(*it, &sockSet)) {
-                    numBytesRecvd = HandleTCPClient(*it);
+                if (FD_ISSET((*it).first, &sockSet)) {
+                    numBytesRecvd = HandleTCPClient((*it).first);
                     if (numBytesRecvd == 0) it = activeConnections.erase(it);
                     else it++;
                 }
