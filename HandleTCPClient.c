@@ -68,33 +68,58 @@ void DieWithSystemMessage(const char *msg)
 //     }
 // }
 
-void HandleTCPClient(int clntSocket) {
+// void HandleTCPClient(int clntSocket) {
+//     char buffer[BUFSIZE];
+
+//     ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
+//     printf("Received %ld bytes\n", numBytesRcvd);
+//     if (numBytesRcvd < 0) {
+//         if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
+//         else DieWithSystemMessage("recv() failed");
+//     }
+
+//     while (numBytesRcvd > 0) {
+//         ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
+//         printf("Sent %ld bytes\n", numBytesSent);
+//         if (numBytesSent < 0)
+//             DieWithSystemMessage("send() failed");
+//         else if (numBytesSent != numBytesRcvd)
+//             DieWithUserMessage("send()", "sent unexpected number of bytes");
+//         if (numBytesRcvd < 0) {
+//             if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
+//             else DieWithSystemMessage("recv() failed");
+//         }
+//         numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
+//         printf("Received %d bytes\n", numBytesRcvd);
+//         if (numBytesRcvd < 0) {
+//             if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
+//             else DieWithSystemMessage("recv() failed");
+//         }
+//     }
+
+//     close(clntSocket);
+// }
+
+int HandleTCPClient(int clntSocket) {
     char buffer[BUFSIZE];
 
     ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
     if (numBytesRcvd < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
-        else DieWithSystemMessage("recv() failed");
+        DieWithSystemMessage("recv() failed");
+    }
+    printf("Received %d bytes\n", numBytesRcvd);
+
+    ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
+    if (numBytesSent < 0)
+        DieWithSystemMessage("send() failed");
+    else if (numBytesSent != numBytesRcvd)
+        DieWithUserMessage("send()", "sent unexpected number of bytes");
+
+    if (numBytesRcvd == 0) {
+        close(clntSocket);
     }
 
-    while (numBytesRcvd > 0) {
-        ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
-        if (numBytesSent < 0)
-            DieWithSystemMessage("send() failed");
-        else if (numBytesSent != numBytesRcvd)
-            DieWithUserMessage("send()", "sent unexpected number of bytes");
-        if (numBytesRcvd < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
-            else DieWithSystemMessage("recv() failed");
-        }
-        numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-        if (numBytesRcvd < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
-            else DieWithSystemMessage("recv() failed");
-        }
-    }
-
-    close(clntSocket);
+    return numBytesRcvd;
 }
 
 void PrintSocketAddress(const struct sockaddr *address, FILE *stream)

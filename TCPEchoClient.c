@@ -79,13 +79,14 @@ int main(int argc, char *argv[])
 
     // Receive the same string back from the server
     unsigned int totalBytesRcvd = 0; // Count of total bytes received
-    fputs("Received: ", stdout);     // Setup to print the echoed string
+    // fputs("Received: ", stdout);     // Setup to print the echoed string
     while (totalBytesRcvd < echoStringLen)
     {
         char buffer[BUFSIZE]; // I/O buffer
         /* Receive up to the buffer size (minus 1 to leave space for
         a null terminator) bytes from the sender */
         numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
+        printf("Received %d bytes\n", numBytes);
         // printf("Received %d bytes", numBytes);
         if (numBytes < 0)
             DieWithSystemMessage("recv() failed");
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
         totalBytesRcvd += numBytes; // Keep tally of total bytes
         buffer[numBytes] = '\0';    // Terminate the string!
         fputs(buffer, stdout);      // Print the echo buffer
+        fputc('\n', stdout); // Print a final linefeed
     }
 
     fputc('\n', stdout); // Print a final linefeed

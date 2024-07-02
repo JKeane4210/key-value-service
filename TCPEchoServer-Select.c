@@ -69,7 +69,9 @@ int main(int argc, char *argv[])
                 if (FD_ISSET(servSock[port], &sockSet))
                 {
                     printf("Request on port %d: ", port);
-                    int socketInUse = AcceptTCPConnection(servSock[port]);
+                    int socketInUse = AcceptTCPConnection(servSock[port]); // this socket should be non-blocking as the function is currently implemented
+                    // but I am not including this in the actual list of things I need to watch over with select
+                    // server sockets just show connections, which means that I need to add the sockets to what I am selecting
                     
                     HandleTCPClient(socketInUse);
                     // FD_SET(servSock[port], &sockSet);
