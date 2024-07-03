@@ -8,9 +8,11 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <cassert>
+#include "Protocol.h"
 // #include "HandleTCPClient.c"
 
-const int BUFSIZE = 32;
+const int BUFSIZE = 256;
 
 void DieWithUserMessage(const char *msg, const char *detail)
 {
@@ -38,32 +40,54 @@ void echo_transaction(int sock, char * echoString, int echoStringLen) {
         DieWithUserMessage("send()", "sent unexpected number of bytes");
 }
 
+void send_request(int sock, char * protocol) {
+    printf("echo transaction\n");
+    // Send the string to the server
+    ssize_t numBytes = send(sock, protocol, BUFSIZE, 0);
+    // printf("completed send\n");
+    if (numBytes < 0)
+        DieWithSystemMessage("send() failed");
+    else if (numBytes != BUFSIZE)
+        DieWithUserMessage("send()", "sent unexpected number of bytes");
+}
+
 const int RECV_BUFSIZE = 256;
 
 void receive_response(int sock) {
     printf("receive_response\n");
     // Receive the same string back from the server
     unsigned int totalBytesRcvd = 0; // Count of total bytes received
-    fputs("Received: ", stdout);     // Setup to print the echoed string
-    while (totalBytesRcvd < RECV_BUFSIZE)
+    char protocol_buffer[BUFSIZE];
+    // fputs("Received: ", stdout);     // Setup to print the echoed string
+    while (totalBytesRcvd < BUFSIZE)
     {
-        char buffer[RECV_BUFSIZE + 1]; // I/O buffer
+        char buffer[BUFSIZE]; // I/O buffer
         /* Receive up to the buffer size (minus 1 to leave space for
         a null terminator) bytes from the sender */
-        int numBytes = recv(sock, buffer, RECV_BUFSIZE, 0);
+        int numBytes = recv(sock, buffer, BUFSIZE, 0);
         // printf("Received %d bytes\n", numBytes);
         // printf("Received %d bytes", numBytes);
         if (numBytes < 0) {
             DieWithSystemMessage("recv() failed");
         } else if (numBytes == 0)
             DieWithUserMessage("recv()", "connection closed prematurely");
+        
+        assert(totalBytesRcvd + numBytes <= BUFSIZE && "Too many bytes sent!");
+        memcpy(protocol_buffer + totalBytesRcvd, buffer, numBytes);
         totalBytesRcvd += numBytes; // Keep tally of total bytes
         buffer[totalBytesRcvd] = '\0';    // Terminate the string!
-        fputs(buffer, stdout);      // Print the echo buffer
+        // fputs(buffer, stdout);      // Print the echo buffer
         // fputc('\n', stdout); // Print a final linefeed
     }
 
-    fputc('\n', stdout); // Print a final linefeed
+    for (int i = 0; i < BUFSIZE; ++i) {
+        if (protocol_buffer[i] != 0)
+            printf("(%d) %c\n", i, protocol_buffer[i]);
+    } printf("\n");
+
+    Protocol p = *reinterpret_cast<Protocol *>(protocol_buffer);
+    printf("Command Type: %d, Key: %s, Value: %s\n", p.request_type, p.key, p.value);
+    // fputc('\n', stdout); // Print a final linefeed
 }
 
 int main(int argc, char *argv[])
@@ -114,11 +138,20 @@ int main(int argc, char *argv[])
     }
     size_t echoStringLen = BUFSIZE; // strlen(echoString); // Determine input length
 
-    for (int i = 0; i < 32; ++i) {
-        echo_transaction(sock, echoString, BUFSIZE);
-        if (i % 8 == 7) {
-            receive_response(sock);
-        }
+    // for (int i = 0; i < 32; ++i) {
+    //     echo_transaction(sock, echoString, BUFSIZE);
+    //     if (i % 8 == 7) {
+    //         receive_response(sock);
+    //     }
+    // }
+
+    for (int i = 0; i < 4; ++i) {
+        Protocol p;
+        p.request_type = REQUEST_TYPE::CONTAINS;
+        strcpy(p.key, "hello world");
+        char * buffer = reinterpret_cast<char *>(&p);
+        send_request(sock, buffer);
+        receive_response(sock);
     }
 
     close(sock);
