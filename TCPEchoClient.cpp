@@ -86,7 +86,7 @@ void receive_response(int sock) {
     } printf("\n");
 
     Protocol p = *reinterpret_cast<Protocol *>(protocol_buffer);
-    printf("Command Type: %d, Key: %s, Value: %s\n", p.request_type, p.key, p.value);
+    printf("Command Type: %d, In Database: %d, Key: %s, Value: %s\n", p.request_type, p.in_database, p.key, p.value);
     // fputc('\n', stdout); // Print a final linefeed
 }
 
@@ -147,8 +147,8 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < 4; ++i) {
         Protocol p;
-        p.request_type = REQUEST_TYPE::CONTAINS;
-        strcpy(p.key, "hello world");
+        p.request_type = REQUEST_TYPE::GET;
+        strcpy(p.key, "aaaaa");
         char * buffer = reinterpret_cast<char *>(&p);
         send_request(sock, buffer);
         receive_response(sock);

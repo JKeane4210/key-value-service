@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <cassert>
+#include "disk_btree.h"
+#include "Protocol.h"
 
 const int BUFSIZE = 256;
 
@@ -148,7 +150,33 @@ int HandleTCPKeyValueServiceClient(int clntSocket, struct ProtocolBuffer *pb) {
     (*pb).totalBytes += numBytesRcvd;
 
     if ((*pb).totalBytes == BUFSIZE) {
-        ssize_t numBytesSent = send(clntSocket, (*pb).buffer, BUFSIZE, 0);
+        DiskBTree btree("benchmark_tree.bin", false);
+        Protocol p = *reinterpret_cast<Protocol *>((*pb).buffer);
+        switch (p.request_type) {
+            case (REQUEST_TYPE::GET): {
+                char * result = btree.find(p.key);
+                p.in_database = result != nullptr;
+                if (result != nullptr) {
+                    memcpy(p.value, result, KEY_SIZE);
+                }
+                break;
+            } case (REQUEST_TYPE::CONTAINS): { 
+                char * result = btree.find(p.key);
+                p.in_database = result != nullptr;
+                break;
+            } case (REQUEST_TYPE::PUT): { 
+                char * result = btree.insert(p.key, p.value);
+                p.in_database = result != nullptr;
+                if (result != nullptr) {
+                    memcpy(p.value, result, KEY_SIZE);
+                }
+                break;
+            } default: {
+                assert(false && "Request was not of a valid type");
+            }
+        }
+        char * send_buffer = reinterpret_cast<char *>(&p);
+        ssize_t numBytesSent = send(clntSocket, send_buffer, BUFSIZE, 0);
         if (numBytesSent < 0)
             DieWithSystemMessage("send() failed");
         else if (numBytesSent != BUFSIZE)
