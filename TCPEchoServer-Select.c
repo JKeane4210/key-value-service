@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include "HandleTCPClient.c"
+#include "HandleTCPClient.cpp"
 
 int main(int argc, char *argv[])
 {

@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <errno.h>
 // #include "HandleTCPClient.c"
 
 const int BUFSIZE = 32;
@@ -27,6 +28,7 @@ void DieWithSystemMessage(const char *msg)
 }
 
 void echo_transaction(int sock, char * echoString, int echoStringLen) {
+    printf("echo transaction\n");
     // Send the string to the server
     ssize_t numBytes = send(sock, echoString, echoStringLen, 0);
     // printf("completed send\n");
@@ -34,24 +36,29 @@ void echo_transaction(int sock, char * echoString, int echoStringLen) {
         DieWithSystemMessage("send() failed");
     else if (numBytes != echoStringLen)
         DieWithUserMessage("send()", "sent unexpected number of bytes");
+}
 
+const int RECV_BUFSIZE = 256;
+
+void receive_response(int sock) {
+    printf("receive_response\n");
     // Receive the same string back from the server
     unsigned int totalBytesRcvd = 0; // Count of total bytes received
     fputs("Received: ", stdout);     // Setup to print the echoed string
-    while (totalBytesRcvd < echoStringLen)
+    while (totalBytesRcvd < RECV_BUFSIZE)
     {
-        char buffer[BUFSIZE]; // I/O buffer
+        char buffer[RECV_BUFSIZE + 1]; // I/O buffer
         /* Receive up to the buffer size (minus 1 to leave space for
         a null terminator) bytes from the sender */
-        numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
+        int numBytes = recv(sock, buffer, RECV_BUFSIZE, 0);
         // printf("Received %d bytes\n", numBytes);
         // printf("Received %d bytes", numBytes);
-        if (numBytes < 0)
+        if (numBytes < 0) {
             DieWithSystemMessage("recv() failed");
-        else if (numBytes == 0)
+        } else if (numBytes == 0)
             DieWithUserMessage("recv()", "connection closed prematurely");
         totalBytesRcvd += numBytes; // Keep tally of total bytes
-        buffer[numBytes] = '\0';    // Terminate the string!
+        buffer[totalBytesRcvd] = '\0';    // Terminate the string!
         fputs(buffer, stdout);      // Print the echo buffer
         // fputc('\n', stdout); // Print a final linefeed
     }
@@ -74,6 +81,12 @@ int main(int argc, char *argv[])
 
     // Create a reliable, stream socket using TCP
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    // int status = fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
+
+    // if (status == -1){
+    //     perror("calling fcntl");
+    //     // handle the error.  By the way, I've never seen fcntl fail in this way
+    // }
     
     printf("Created socket: %d\n", sock);
     if (sock < 0)
@@ -95,10 +108,17 @@ int main(int argc, char *argv[])
     if (connect(sock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
         DieWithSystemMessage("connect() failed");
 
-    size_t echoStringLen = strlen(echoString); // Determine input length
+    echoString = new char[BUFSIZE];
+    for (int i = 0; i < BUFSIZE; ++i) {
+        echoString[i] = i % 2 ? 'k' : 'j';
+    }
+    size_t echoStringLen = BUFSIZE; // strlen(echoString); // Determine input length
 
-    for (int i = 0; i < 10; ++i) {
-        echo_transaction(sock, echoString, echoStringLen);
+    for (int i = 0; i < 32; ++i) {
+        echo_transaction(sock, echoString, BUFSIZE);
+        if (i % 8 == 7) {
+            receive_response(sock);
+        }
     }
 
     close(sock);

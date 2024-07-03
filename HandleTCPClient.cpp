@@ -10,8 +10,14 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <cassert>
 
 const int BUFSIZE = 256;
+
+struct ProtocolBuffer {
+    int totalBytes = 0;
+    char buffer[BUFSIZE];
+};
 
 void DieWithUserMessage(const char *msg, const char *detail)
 {
@@ -117,6 +123,38 @@ int HandleTCPClient(int clntSocket) {
 
     if (numBytesRcvd == 0) {
         close(clntSocket);
+    }
+
+    return numBytesRcvd;
+}
+
+int HandleTCPKeyValueServiceClient(int clntSocket, struct ProtocolBuffer *pb) {
+    char buffer[BUFSIZE];
+
+    ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
+    if (numBytesRcvd < 0) {
+        DieWithSystemMessage("recv() failed");
+    }
+    printf("Received %d bytes\n", numBytesRcvd);
+
+    // closes connection if client socket communicated that it has closed
+    if (numBytesRcvd == 0) {
+        close(clntSocket);
+        return numBytesRcvd;
+    }
+
+    assert((*pb).totalBytes + numBytesRcvd <= BUFSIZE && "Too many bytes sent!");
+    memcpy((*pb).buffer + (*pb).totalBytes, buffer, numBytesRcvd);
+    (*pb).totalBytes += numBytesRcvd;
+
+    if ((*pb).totalBytes == BUFSIZE) {
+        ssize_t numBytesSent = send(clntSocket, (*pb).buffer, BUFSIZE, 0);
+        if (numBytesSent < 0)
+            DieWithSystemMessage("send() failed");
+        else if (numBytesSent != BUFSIZE)
+            DieWithUserMessage("send()", "sent unexpected number of bytes");
+        else
+            (*pb).totalBytes = 0; // reset buffer for a new request
     }
 
     return numBytesRcvd;

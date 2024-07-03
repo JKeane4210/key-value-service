@@ -5,14 +5,9 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <map>
-#include "HandleTCPClient.c"
+#include "HandleTCPClient.cpp"
 
 using namespace std;
-
-struct ProtocolBuffer {
-    int length;
-    char buffer[256];
-};
 
 int main(int argc, char *argv[]) {
     const static long TIMEOUT = 2;
@@ -25,7 +20,7 @@ int main(int argc, char *argv[]) {
         maxDescriptor = connectionSocket;
     }
 
-    map<int, char*> activeConnections;
+    map<int, ProtocolBuffer*> activeConnections;
 
     bool running = true;
     fd_set sockSet;
@@ -36,7 +31,7 @@ int main(int argc, char *argv[]) {
         FD_SET(connectionSocket, &sockSet);
 
         // add everything active connection
-        for (pair<int, char*> activeConnectionSocket : activeConnections) {
+        for (pair<int, ProtocolBuffer*> activeConnectionSocket : activeConnections) {
             FD_SET(activeConnectionSocket.first, &sockSet);
         }
 
@@ -61,19 +56,19 @@ int main(int argc, char *argv[]) {
             if (FD_ISSET(connectionSocket, &sockSet)) {
                 printf("Request on port %d: ", PORT);
                 int acceptedConnectionSocket = AcceptTCPConnection(connectionSocket);
-                char* protocolBuffer = new char[256];
-                activeConnections.insert({acceptedConnectionSocket, protocolBuffer});
+                ProtocolBuffer *pb = new ProtocolBuffer();
+                activeConnections.insert({acceptedConnectionSocket, pb});
                 if (acceptedConnectionSocket > maxDescriptor) {
                     maxDescriptor = acceptedConnectionSocket;
                 }
             }
 
             // loop through active connection sockets
-            map<int, char*>::iterator it = activeConnections.begin();
+            map<int, ProtocolBuffer*>::iterator it = activeConnections.begin();
             while (it != activeConnections.end()) {
                 int numBytesRecvd;
                 if (FD_ISSET((*it).first, &sockSet)) {
-                    numBytesRecvd = HandleTCPClient((*it).first);
+                    numBytesRecvd = HandleTCPKeyValueServiceClient((*it).first, (*it).second);
                     if (numBytesRecvd == 0) it = activeConnections.erase(it);
                     else it++;
                 }
