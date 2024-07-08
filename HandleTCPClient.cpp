@@ -36,100 +36,6 @@ void DieWithSystemMessage(const char *msg)
     exit(1);
 }
 
-// void HandleTCPClient(int clntSocket)
-// {
-//     char buffer[BUFSIZE]; // Buffer for echo string
-
-//     // Receive message from client
-//     ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, MSG_PEEK); // checks to see how much we can get
-//     printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
-//     if (numBytesRcvd < 0)
-//         DieWithSystemMessage("recv() failed");
-
-//     // Send received string and receive again until end of stream
-//     // if (numBytesRcvd > 0)
-//     // { // 0 indicates end of stream
-//         // Echo message back to client
-        
-        
-
-//         // // See if there is more data to receive -> could block though
-//         // numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-//         // printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
-//         // if (numBytesRcvd < 0)
-//         //     DieWithSystemMessage("recv() failed");
-//     // }
-
-//     if (numBytesRcvd == 0) {
-//         ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
-//         printf("Sent %ld bits\n", numBytesSent);
-//         if (numBytesSent < 0)
-//             DieWithSystemMessage("send() failed");
-//         else if (numBytesSent != numBytesRcvd)
-//             DieWithUserMessage("send()", "sent unexpected number of bytes");
-//         close(clntSocket); // Close client socket
-//     } else if (numBytesRcvd == BUFSIZE) {
-//         ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0); // only reads if buffer is full
-//         printf("Received %ld bytes from %d\n", numBytesRcvd, clntSocket);
-//         if (numBytesRcvd < 0)
-//             DieWithSystemMessage("recv() failed");
-//     }
-// }
-
-// void HandleTCPClient(int clntSocket) {
-//     char buffer[BUFSIZE];
-
-//     ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-//     printf("Received %ld bytes\n", numBytesRcvd);
-//     if (numBytesRcvd < 0) {
-//         if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
-//         else DieWithSystemMessage("recv() failed");
-//     }
-
-//     while (numBytesRcvd > 0) {
-//         ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
-//         printf("Sent %ld bytes\n", numBytesSent);
-//         if (numBytesSent < 0)
-//             DieWithSystemMessage("send() failed");
-//         else if (numBytesSent != numBytesRcvd)
-//             DieWithUserMessage("send()", "sent unexpected number of bytes");
-//         if (numBytesRcvd < 0) {
-//             if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
-//             else DieWithSystemMessage("recv() failed");
-//         }
-//         numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-//         printf("Received %d bytes\n", numBytesRcvd);
-//         if (numBytesRcvd < 0) {
-//             if (errno == EAGAIN || errno == EWOULDBLOCK) return; // if would block, break out of this call and go back into the select() loop
-//             else DieWithSystemMessage("recv() failed");
-//         }
-//     }
-
-//     close(clntSocket);
-// }
-
-int HandleTCPClient(int clntSocket) {
-    char buffer[BUFSIZE];
-
-    ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-    if (numBytesRcvd < 0) {
-        DieWithSystemMessage("recv() failed");
-    }
-    printf("Received %d bytes\n", numBytesRcvd);
-
-    ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
-    if (numBytesSent < 0)
-        DieWithSystemMessage("send() failed");
-    else if (numBytesSent != numBytesRcvd)
-        DieWithUserMessage("send()", "sent unexpected number of bytes");
-
-    if (numBytesRcvd == 0) {
-        close(clntSocket);
-    }
-
-    return numBytesRcvd;
-}
-
 int HandleTCPKeyValueServiceClient(int clntSocket, struct ProtocolBuffer *pb) {
     char buffer[BUFSIZE];
 
@@ -137,7 +43,6 @@ int HandleTCPKeyValueServiceClient(int clntSocket, struct ProtocolBuffer *pb) {
     if (numBytesRcvd < 0) {
         DieWithSystemMessage("recv() failed");
     }
-    printf("Received %d bytes\n", numBytesRcvd);
 
     // closes connection if client socket communicated that it has closed
     if (numBytesRcvd == 0) {
@@ -233,7 +138,6 @@ int AcceptTCPConnection(int servSock)
 
     // Wait for a client to connect
     int clntSock = accept(servSock, (struct sockaddr *)&clntAddr, &clntAddrLen);
-    printf("connecting servSock (%d) and clntSock (%d) <- connection to talk over\n", servSock, clntSock);
     if (clntSock < 0)
         DieWithSystemMessage("accept() failed");
 

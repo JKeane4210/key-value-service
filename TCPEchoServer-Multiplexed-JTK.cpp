@@ -54,7 +54,6 @@ int main(int argc, char *argv[]) {
 
             // Check listening socket
             if (FD_ISSET(connectionSocket, &sockSet)) {
-                printf("Request on port %d: ", PORT);
                 int acceptedConnectionSocket = AcceptTCPConnection(connectionSocket);
                 ProtocolBuffer *pb = new ProtocolBuffer();
                 activeConnections.insert({acceptedConnectionSocket, pb});
