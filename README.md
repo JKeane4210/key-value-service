@@ -4,7 +4,7 @@ Jonny Keane
 
 This is a TCP/IP Server-Client relationship implemented for concurrent connections with non-blocking I/O to facilitiate a key-value service. The key-value service allows for GET, CONTAINS, and PUT requests to be made according to a binary protocol. The requests can then interact with an on-disk persistent B-Tree data structure implemented in [Project 1](https://github.com/JKeane4210/b-tree).
 
-All code was written from scratch but was inspired by class examples as well as the code examples for *TCP/IP Sockets in C* by Michael J. Donahoo and Kenneth L.Calvert. The code is in C++ and is for the MSML Distributed Databases class.
+All code was written from scratch but was inspired by class examples as well as the code examples for *TCP/IP Sockets in C* by Michael J. Donahoo and Kenneth L. Calvert. The code is in C++ and is for the MSML Distributed Databases class.
 
 ## Instructions
 
