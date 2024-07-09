@@ -69,7 +69,7 @@ All files were compiled using g++ as the compiler in WSL.
 
 ```TCPClient-Tests.cpp``` - While not as robust as the tests conducted on the B-Tree from Project 1, this file will attempt a PUT, GET, and CONTAINS request to make sure that they do not create any errors. The server must be running but then this client will attempt to PUT the key "zzzzz" into the database and attempt a GET and CONTAINS request to ensure the value was added to the database.
 
-### Unused Pieces of Code (Shared for Reference)
+### Unused Pieces of Code
 
 - ```test.cpp``` - Testing code for getting the sizes of the Protocol objects being created for sending requests/responses between the client/server.
 
